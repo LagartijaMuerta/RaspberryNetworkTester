@@ -35,8 +35,10 @@ Hinweis: Die automatische Installation erfordert sudo und kann nach einem Passwo
 
 Manuelle Installation (empfohlen)
 
+```bash
 sudo apt update
 sudo apt install -y python3-gpiozero x11-xserver-utils xinput alsa-utils onboard
+```
 
 Ausführung
 
@@ -52,6 +54,7 @@ Systemd-Service (optional)
 
 Erstelle /etc/systemd/system/gpio-buttons-6b.service (Passe User und Pfade an):
 
+```bash
 [Unit]
 Description=GPIO Buttons (6B + 2L)
 After=graphical.target
@@ -66,12 +69,15 @@ Restart=on-failure
 
 [Install]
 WantedBy=graphical.target
+```
 
 Dann aktivieren und starten:
 
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable gpio-buttons-6b.service
 sudo systemctl start gpio-buttons-6b.service
+```
 
 Hinweise / Troubleshooting
 
@@ -87,5 +93,3 @@ Das Skript ruft sudo apt-get auf, wenn Pakete fehlen. Stelle sicher, dass du dem
 Support
 
 Bei Problemen mit der Konfiguration oder beim Starten des Dienstes sende die Ausgabe von `journalctl -u gpio-buttons-6b.service -b` bzw. die Logausgabe, wenn du das Skript manuell startest.
-
-Erstellt von: GitHub Copilot
