@@ -37,13 +37,14 @@ Das Skript versucht, fehlende Abhängigkeiten automatisch zu installieren. Es wi
 
 ```bash
 sudo apt update
-sudo apt install -y python3-gpiozero xdotool x11-xserver-utils alsa-utils squeekboard
+sudo apt install -y python3-gpiozero xdotool x11-xserver-utils alsa-utils squeekboard wlr-randr
 ```
 
 ### Erklärung der Pakete:
 - `python3-gpiozero`: GPIO-Steuerung
 - `xdotool`: Tastatur- und Maus-Befehle (Scroll, Zoom)
-- `x11-xserver-utils`: xrandr für Bildschirm-Skalierung
+- `x11-xserver-utils`: xrandr für Bildschirm-Skalierung (X11)
+- `wlr-randr`: Bildschirm-Skalierung für Wayland (moderne Systeme)
 - `alsa-utils`: amixer für Lautstärkensteuerung
 - `squeekboard`: On-Screen-Tastatur
 

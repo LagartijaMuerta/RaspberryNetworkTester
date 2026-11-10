@@ -37,13 +37,14 @@ The script attempts to install missing dependencies automatically. However, it i
 
 ```bash
 sudo apt update
-sudo apt install -y python3-gpiozero xdotool x11-xserver-utils alsa-utils squeekboard
+sudo apt install -y python3-gpiozero xdotool x11-xserver-utils alsa-utils squeekboard wlr-randr
 ```
 
 ### Package Explanation:
 - `python3-gpiozero`: GPIO control
 - `xdotool`: Keyboard and mouse commands (scroll, zoom)
-- `x11-xserver-utils`: xrandr for screen scaling
+- `x11-xserver-utils`: xrandr for screen scaling (X11)
+- `wlr-randr`: Screen scaling for Wayland (modern systems)
 - `alsa-utils`: amixer for volume control
 - `squeekboard`: On-screen keyboard
 

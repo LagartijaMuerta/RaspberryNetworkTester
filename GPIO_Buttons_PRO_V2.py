@@ -198,7 +198,18 @@ def detect_display():
     return os.environ.get('DISPLAY', ':0')
 
 def detect_primary_output():
-    """Detect the primary display output for xrandr commands."""
+    """Detect the primary display output for xrandr or wlr-randr commands."""
+    # First try wlr-randr (Wayland)
+    try:
+        res = subprocess.run(['wlr-randr'], check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        for line in res.stdout.splitlines():
+            if 'connected' in line and not 'disconnected' in line:
+                return line.split()[0]
+    except Exception:
+        pass
+
+    # Fallback to xrandr (X11)
     try:
         res = subprocess.run(['xrandr', '--query'], check=True,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
@@ -284,6 +295,7 @@ def update_led_status_2():
 
     if mode_right == ModeRightGroup.MR_1:
         # Volume mode: LED off
+        log.debug('LED Status 2: Off (MR_1 - Volume mode)')
         led_status_2.off()
 
         # Stop blinking thread if active
@@ -294,6 +306,7 @@ def update_led_status_2():
 
     elif mode_right == ModeRightGroup.MR_2:
         # Zoom mode: LED on
+        log.debug('LED Status 2: On (MR_2 - Zoom mode)')
         led_status_2.on()
 
         # Stop blinking thread if active
@@ -304,6 +317,7 @@ def update_led_status_2():
 
     elif mode_right == ModeRightGroup.MR_3:
         # Scale mode: LED blinks
+        log.debug('LED Status 2: Blinking (MR_3 - Scale mode)')
         if not (blink_thread_mr_3 and blink_thread_mr_3.is_alive()):
             blink_stop_mr_3.clear()
             blink_thread_mr_3 = Thread(target=blink_led, args=(led_status_2, blink_stop_mr_3))
@@ -404,7 +418,7 @@ def volume_down():
 # ============================================================================
 
 def apply_scale(scale):
-    """Apply screen scaling via xrandr."""
+    """Apply screen scaling via xrandr (X11) or wlr-randr (Wayland)."""
     output = detect_primary_output()
     if not output:
         log.warning('No display output found; skipping scale adjustment')
@@ -415,10 +429,21 @@ def apply_scale(scale):
         env = os.environ.copy()
         env['DISPLAY'] = display
 
+        # Try wlr-randr first (Wayland)
+        try:
+            cmd = f'wlr-randr --output {output} --scale {scale}'
+            subprocess.run(cmd, shell=True, env=env, check=False,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+            log.info('Screen scale set to: %.2f (wlr-randr)', scale)
+            return True
+        except Exception:
+            pass
+
+        # Fallback to xrandr (X11)
         cmd = f'xrandr --output {output} --scale {scale}x{scale}'
         subprocess.run(cmd, shell=True, env=env, check=False,
-                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        log.info('Screen scale set to: %.2f', scale)
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+        log.info('Screen scale set to: %.2f (xrandr)', scale)
         return True
     except Exception as e:
         log.error('Error applying scale: %s', e)
