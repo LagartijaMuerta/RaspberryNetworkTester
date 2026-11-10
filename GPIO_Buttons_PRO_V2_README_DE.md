@@ -204,6 +204,31 @@ sudo systemctl restart gpio-buttons-pro-v2.service
   - In MR_3 haben Kurz-Drücke keine Wirkung
   - GPIO 24 erneut für 2 Sekunden halten: Zurück zu MR_1
 
+## Zusätzliche Funktionen und Einschränkungen
+
+### Gegenseitiges Blockieren der Gruppen
+
+Wenn **ML_2 (Erweiterter Modus)** aktiviert ist:
+- Die gesamte rechte Gruppe (MR) ist **gesperrt**
+- GPIO 23, 25, 24 sind nicht verfügbar
+- Nur GPIO 27 kann ML_2 wieder deaktivieren
+- Das Bildschirm-Tastaturtastatur (Squeekboard) funktioniert weiterhin
+
+Wenn **MR_3 (Skalierings-Modus)** aktiviert ist:
+- Die gesamte linke Gruppe (ML) ist **gesperrt**
+- GPIO 17, 22, 27 sind nicht verfügbar
+- Nur GPIO 24 kann MR_3 wieder deaktivieren
+- Bildschirm-Skalierung ist aktiv
+
+**Warum diese Blockierung?** Dies verhindert unbeabsichtigte Eingaben von einer Gruppe, während die andere in einem erweiterten/Blink-Modus ist.
+
+### Hold-Verhalten (2+ Sekunden halten)
+
+**Wichtig:** Wenn Sie GPIO 27 oder GPIO 24 für 2+ Sekunden halten:
+- Der Modus-Wechsel wird **nur einmal** ausgelöst
+- Sie müssen die Taste loslassen und erneut drücken für weitere Modi-Wechsel
+- Dies verhindert rapides Umschalten zwischen Modi während des Haltens
+
 ## Troubleshooting
 
 ### Service startet nicht

@@ -158,12 +158,15 @@ led_status_1 = None
 squeekboard_active = False
 blink_thread_ml_2 = None
 blink_stop_ml_2 = Event()
+lr_mode_switch_triggered = False  # Prevent repeated mode switches during hold
 
 # Right Group State
 mode_right = ModeRightGroup.MR_1
+mode_right_previous = None  # Store previous mode for MR_3 toggle
 led_status_2 = None
 blink_thread_mr_3 = None
 blink_stop_mr_3 = Event()
+mr_mode_switch_triggered = False  # Prevent repeated mode switches during hold
 
 # State locks
 state_lock_left = Lock()
@@ -456,6 +459,11 @@ def open_browser():
 def handle_action_1_1_press():
     """Handle GPIO 17 (Action_1_1) press."""
     with state_lock_left:
+        # Check if right group is in MR_3 (scale/blink mode)
+        if mode_right == ModeRightGroup.MR_3:
+            log.warning('Action_1_1: Blocked - MR_3 (scale mode) is active')
+            return
+
         if mode_left == ModeLeftGroup.ML_1:
             log.debug('Action_1_1: Scroll up')
             scroll_up()
@@ -467,6 +475,11 @@ def handle_action_1_1_hold(duration):
     """Handle GPIO 17 (Action_1_1) held for duration."""
     # Repeat action while held
     with state_lock_left:
+        # Check if right group is in MR_3 (scale/blink mode)
+        if mode_right == ModeRightGroup.MR_3:
+            log.debug('Action_1_1 held: Blocked - MR_3 (scale mode) is active')
+            return
+
         if mode_left == ModeLeftGroup.ML_1:
             log.debug('Action_1_1 held: Continuous scroll up')
         elif mode_left == ModeLeftGroup.ML_2:
@@ -475,6 +488,11 @@ def handle_action_1_1_hold(duration):
 def handle_action_1_2_press():
     """Handle GPIO 22 (Action_1_2) press."""
     with state_lock_left:
+        # Check if right group is in MR_3 (scale/blink mode)
+        if mode_right == ModeRightGroup.MR_3:
+            log.warning('Action_1_2: Blocked - MR_3 (scale mode) is active')
+            return
+
         if mode_left == ModeLeftGroup.ML_1:
             log.debug('Action_1_2: Scroll down')
             scroll_down()
@@ -486,6 +504,11 @@ def handle_action_1_2_hold(duration):
     """Handle GPIO 22 (Action_1_2) held for duration."""
     # Repeat action while held
     with state_lock_left:
+        # Check if right group is in MR_3 (scale/blink mode)
+        if mode_right == ModeRightGroup.MR_3:
+            log.debug('Action_1_2 held: Blocked - MR_3 (scale mode) is active')
+            return
+
         if mode_left == ModeLeftGroup.ML_1:
             log.debug('Action_1_2 held: Continuous scroll down')
         elif mode_left == ModeLeftGroup.ML_2:
@@ -493,13 +516,26 @@ def handle_action_1_2_hold(duration):
 
 def handle_mode_switch_1_press():
     """Handle GPIO 27 (Mode_Switch_1) short press."""
-    global squeekboard_active
+    global squeekboard_active, lr_mode_switch_triggered
     log.debug('Mode_Switch_1: Short press - toggle Squeekboard')
+    lr_mode_switch_triggered = False  # Reset flag for next hold
     toggle_squeekboard()
 
 def handle_mode_switch_1_hold(duration):
     """Handle GPIO 27 (Mode_Switch_1) long press (2+ seconds)."""
-    global mode_left
+    global mode_left, lr_mode_switch_triggered
+
+    # Only trigger mode switch once per hold
+    if lr_mode_switch_triggered:
+        return
+
+    lr_mode_switch_triggered = True
+
+    # Check if MR_3 is active (other group in blink mode)
+    if mode_right == ModeRightGroup.MR_3:
+        log.warning('Mode_Switch_1: Cannot switch ML when MR_3 (scale mode) is active')
+        return
+
     with state_lock_left:
         if mode_left == ModeLeftGroup.ML_1:
             mode_left = ModeLeftGroup.ML_2
@@ -517,6 +553,11 @@ def handle_mode_switch_1_hold(duration):
 def handle_action_2_1_press():
     """Handle GPIO 23 (Action_2_1) press."""
     with state_lock_right:
+        # Check if left group is in ML_2 (blink mode)
+        if mode_left == ModeLeftGroup.ML_2:
+            log.warning('Action_2_1: Blocked - ML_2 (extended mode) is active')
+            return
+
         if mode_right == ModeRightGroup.MR_1:
             log.debug('Action_2_1: Volume up')
             volume_up()
@@ -531,16 +572,29 @@ def handle_action_2_1_hold(duration):
     """Handle GPIO 23 (Action_2_1) held for duration."""
     # Repeat action while held
     with state_lock_right:
+        # Check if left group is in ML_2 (blink mode)
+        if mode_left == ModeLeftGroup.ML_2:
+            log.debug('Action_2_1 held: Blocked - ML_2 is active')
+            return
+
         if mode_right == ModeRightGroup.MR_1:
             log.debug('Action_2_1 held: Continuous volume up')
+            volume_up()
         elif mode_right == ModeRightGroup.MR_2:
             log.debug('Action_2_1 held: Continuous zoom in')
+            zoom_in()
         elif mode_right == ModeRightGroup.MR_3:
             log.debug('Action_2_1 held: Continuous scale screen down')
+            scale_screen_down()
 
 def handle_action_2_2_press():
     """Handle GPIO 25 (Action_2_2) press."""
     with state_lock_right:
+        # Check if left group is in ML_2 (blink mode)
+        if mode_left == ModeLeftGroup.ML_2:
+            log.warning('Action_2_2: Blocked - ML_2 (extended mode) is active')
+            return
+
         if mode_right == ModeRightGroup.MR_1:
             log.debug('Action_2_2: Volume down')
             volume_down()
@@ -555,16 +609,32 @@ def handle_action_2_2_hold(duration):
     """Handle GPIO 25 (Action_2_2) held for duration."""
     # Repeat action while held
     with state_lock_right:
+        # Check if left group is in ML_2 (blink mode)
+        if mode_left == ModeLeftGroup.ML_2:
+            log.debug('Action_2_2 held: Blocked - ML_2 is active')
+            return
+
         if mode_right == ModeRightGroup.MR_1:
             log.debug('Action_2_2 held: Continuous volume down')
+            volume_down()
         elif mode_right == ModeRightGroup.MR_2:
             log.debug('Action_2_2 held: Continuous zoom out')
+            zoom_out()
         elif mode_right == ModeRightGroup.MR_3:
             log.debug('Action_2_2 held: Continuous scale screen up')
+            scale_screen_up()
 
 def handle_mode_switch_2_press():
     """Handle GPIO 24 (Mode_Switch_2) short press."""
-    global mode_right
+    global mode_right, mr_mode_switch_triggered
+
+    # Check if left group is in ML_2 (blink mode)
+    if mode_left == ModeLeftGroup.ML_2:
+        log.warning('Mode_Switch_2: Cannot switch MR when ML_2 (extended mode) is active')
+        return
+
+    mr_mode_switch_triggered = False  # Reset flag for next hold
+
     with state_lock_right:
         if mode_right == ModeRightGroup.MR_1:
             mode_right = ModeRightGroup.MR_2
@@ -581,12 +651,31 @@ def handle_mode_switch_2_press():
 
 def handle_mode_switch_2_hold(duration):
     """Handle GPIO 24 (Mode_Switch_2) long press (2+ seconds)."""
-    global mode_right
+    global mode_right, mode_right_previous, mr_mode_switch_triggered
+
+    # Only trigger mode switch once per hold
+    if mr_mode_switch_triggered:
+        return
+
+    mr_mode_switch_triggered = True
+
+    # Check if left group is in ML_2 (blink mode)
+    if mode_left == ModeLeftGroup.ML_2:
+        log.warning('Mode_Switch_2: Cannot switch MR when ML_2 (extended mode) is active')
+        return
+
     with state_lock_right:
         if mode_right == ModeRightGroup.MR_3:
-            mode_right = ModeRightGroup.MR_1
-            log.info('Mode_Switch_2: Disabled MR_3 (Scale mode), switched to MR_1')
+            # Return to previous mode (MR_1 or MR_2)
+            if mode_right_previous:
+                mode_right = mode_right_previous
+                log.info('Mode_Switch_2: Disabled MR_3 (Scale mode), returned to %s', mode_right.name)
+            else:
+                mode_right = ModeRightGroup.MR_1
+                log.info('Mode_Switch_2: Disabled MR_3 (Scale mode), switched to MR_1')
         else:
+            # Store current mode and switch to MR_3
+            mode_right_previous = mode_right
             mode_right = ModeRightGroup.MR_3
             log.info('Mode_Switch_2: Activated MR_3 (Scale mode)')
 
@@ -628,11 +717,15 @@ def create_button_handler(on_press, on_hold):
 class ButtonHandler(Thread):
     """Thread-based button handler with hold detection."""
 
-    def __init__(self, button, on_press, on_hold):
+    # Distinguishes action buttons (repeat hold) from mode-switch buttons (single hold)
+    IS_MODE_SWITCH = False
+
+    def __init__(self, button, on_press, on_hold, is_mode_switch=False):
         super().__init__()
         self.button = button
         self.on_press = on_press
         self.on_hold = on_hold
+        self.is_mode_switch = is_mode_switch
         self.daemon = True
         self.running = True
 
@@ -663,8 +756,8 @@ class ButtonHandler(Thread):
                     except Exception as e:
                         log.error('Error in hold handler: %s', e)
 
-                # Continue repeating hold action
-                if hold_triggered:
+                # Continue repeating hold action ONLY for action buttons, NOT mode switches
+                if hold_triggered and not self.is_mode_switch:
                     try:
                         self.on_hold(duration)
                     except Exception as e:
@@ -729,13 +822,15 @@ def setup_button_handlers():
     log.info('Setting up button event handlers...')
 
     # Create handler threads
+    # Action buttons: repeat hold (is_mode_switch=False)
+    # Mode-switch buttons: single trigger on hold (is_mode_switch=True)
     handlers = [
-        ButtonHandler(btn_action_1_1, handle_action_1_1_press, handle_action_1_1_hold),
-        ButtonHandler(btn_action_1_2, handle_action_1_2_press, handle_action_1_2_hold),
-        ButtonHandler(btn_mode_switch_1, handle_mode_switch_1_press, handle_mode_switch_1_hold),
-        ButtonHandler(btn_action_2_1, handle_action_2_1_press, handle_action_2_1_hold),
-        ButtonHandler(btn_action_2_2, handle_action_2_2_press, handle_action_2_2_hold),
-        ButtonHandler(btn_mode_switch_2, handle_mode_switch_2_press, handle_mode_switch_2_hold),
+        ButtonHandler(btn_action_1_1, handle_action_1_1_press, handle_action_1_1_hold, is_mode_switch=False),
+        ButtonHandler(btn_action_1_2, handle_action_1_2_press, handle_action_1_2_hold, is_mode_switch=False),
+        ButtonHandler(btn_mode_switch_1, handle_mode_switch_1_press, handle_mode_switch_1_hold, is_mode_switch=True),
+        ButtonHandler(btn_action_2_1, handle_action_2_1_press, handle_action_2_1_hold, is_mode_switch=False),
+        ButtonHandler(btn_action_2_2, handle_action_2_2_press, handle_action_2_2_hold, is_mode_switch=False),
+        ButtonHandler(btn_mode_switch_2, handle_mode_switch_2_press, handle_mode_switch_2_hold, is_mode_switch=True),
     ]
 
     # Start all handler threads

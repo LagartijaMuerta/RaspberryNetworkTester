@@ -204,6 +204,31 @@ sudo systemctl restart gpio-buttons-pro-v2.service
   - In MR_3, short presses have no effect
   - Hold GPIO 24 again for 2 seconds: Return to MR_1
 
+## Additional Features and Restrictions
+
+### Mutual Group Blocking
+
+When **ML_2 (Extended Mode)** is activated:
+- The entire right group (MR) is **locked**
+- GPIO 23, 25, 24 are unavailable
+- Only GPIO 27 can deactivate ML_2
+- The on-screen keyboard (Squeekboard) continues to work
+
+When **MR_3 (Scale Mode)** is activated:
+- The entire left group (ML) is **locked**
+- GPIO 17, 22, 27 are unavailable
+- Only GPIO 24 can deactivate MR_3
+- Screen scaling is active
+
+**Why this blocking?** This prevents accidental inputs from one group while the other is in an extended/blinking mode.
+
+### Hold Behavior (2+ seconds hold)
+
+**Important:** When holding GPIO 27 or GPIO 24 for 2+ seconds:
+- Mode switching is triggered **only once**
+- You must release and press again for subsequent mode changes
+- This prevents rapid mode switching while holding the button
+
 ## Troubleshooting
 
 ### Service won't start
