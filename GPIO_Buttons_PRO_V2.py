@@ -332,14 +332,22 @@ def blink_led(led, stop_event):
 def scroll_up():
     """Simulate mouse wheel scroll up."""
     try:
-        run_cmd('xdotool key Page_Up', shell=True)
+        display = detect_display()
+        env = os.environ.copy()
+        env['DISPLAY'] = display
+        subprocess.run(['xdotool', 'key', 'Page_Up'], env=env,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
         log.error('Error scrolling up: %s', e)
 
 def scroll_down():
     """Simulate mouse wheel scroll down."""
     try:
-        run_cmd('xdotool key Page_Down', shell=True)
+        display = detect_display()
+        env = os.environ.copy()
+        env['DISPLAY'] = display
+        subprocess.run(['xdotool', 'key', 'Page_Down'], env=env,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
         log.error('Error scrolling down: %s', e)
 
@@ -350,14 +358,22 @@ def scroll_down():
 def zoom_in():
     """Zoom in using Ctrl++ keyboard shortcut."""
     try:
-        run_cmd('xdotool key ctrl+plus', shell=True)
+        display = detect_display()
+        env = os.environ.copy()
+        env['DISPLAY'] = display
+        subprocess.run(['xdotool', 'key', 'ctrl+plus'], env=env,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
         log.error('Error zooming in: %s', e)
 
 def zoom_out():
     """Zoom out using Ctrl+- keyboard shortcut."""
     try:
-        run_cmd('xdotool key ctrl+minus', shell=True)
+        display = detect_display()
+        env = os.environ.copy()
+        env['DISPLAY'] = display
+        subprocess.run(['xdotool', 'key', 'ctrl+minus'], env=env,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
         log.error('Error zooming out: %s', e)
 
@@ -368,8 +384,8 @@ def zoom_out():
 def volume_up():
     """Increase volume by VOLUME_STEP percent."""
     try:
-        cmd = f"amixer set Master {VOLUME_STEP}%+"
-        run_cmd(cmd, shell=True)
+        cmd = ['amixer', 'set', 'Master', f'{VOLUME_STEP}%+']
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log.info('Volume increased by %d%%', VOLUME_STEP)
     except Exception as e:
         log.error('Error increasing volume: %s', e)
@@ -377,8 +393,8 @@ def volume_up():
 def volume_down():
     """Decrease volume by VOLUME_STEP percent."""
     try:
-        cmd = f"amixer set Master {VOLUME_STEP}%-"
-        run_cmd(cmd, shell=True)
+        cmd = ['amixer', 'set', 'Master', f'{VOLUME_STEP}%-']
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log.info('Volume decreased by %d%%', VOLUME_STEP)
     except Exception as e:
         log.error('Error decreasing volume: %s', e)
@@ -395,8 +411,13 @@ def apply_scale(scale):
         return False
 
     try:
-        cmd = f"xrandr --output {output} --scale {scale}x{scale}"
-        run_cmd(cmd, shell=True)
+        display = detect_display()
+        env = os.environ.copy()
+        env['DISPLAY'] = display
+
+        cmd = f'xrandr --output {output} --scale {scale}x{scale}'
+        subprocess.run(cmd, shell=True, env=env, check=False,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log.info('Screen scale set to: %.2f', scale)
         return True
     except Exception as e:
@@ -413,7 +434,10 @@ def scale_screen_down():
         new_scale = max(SCALE_MIN, current_scale - SCALE_STEP)
         if new_scale != current_scale:
             current_scale = new_scale
+            log.debug('Scale screen down: %.2f', current_scale)
             apply_scale(current_scale)
+        else:
+            log.debug('Scale already at minimum: %.2f', current_scale)
 
 def scale_screen_up():
     """Increase screen scale by SCALE_STEP."""
@@ -422,7 +446,10 @@ def scale_screen_up():
         new_scale = min(SCALE_MAX, current_scale + SCALE_STEP)
         if new_scale != current_scale:
             current_scale = new_scale
+            log.debug('Scale screen up: %.2f', current_scale)
             apply_scale(current_scale)
+        else:
+            log.debug('Scale already at maximum: %.2f', current_scale)
 
 # ============================================================================
 # APPLICATION LAUNCHERS
@@ -517,9 +544,14 @@ def handle_action_1_2_hold(duration):
 def handle_mode_switch_1_press():
     """Handle GPIO 27 (Mode_Switch_1) short press."""
     global squeekboard_active, lr_mode_switch_triggered
-    log.debug('Mode_Switch_1: Short press - toggle Squeekboard')
     lr_mode_switch_triggered = False  # Reset flag for next hold
-    toggle_squeekboard()
+
+    # Only toggle Squeekboard in ML_1; in ML_2, short press does nothing
+    if mode_left == ModeLeftGroup.ML_1:
+        log.debug('Mode_Switch_1: Short press - toggle Squeekboard')
+        toggle_squeekboard()
+    else:
+        log.debug('Mode_Switch_1: Short press ignored in ML_2 (use hold to exit)')
 
 def handle_mode_switch_1_hold(duration):
     """Handle GPIO 27 (Mode_Switch_1) long press (2+ seconds)."""
