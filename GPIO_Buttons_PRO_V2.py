@@ -578,6 +578,13 @@ def handle_mode_switch_1_press():
     else:
         log.debug('Mode_Switch_1: Short press ignored in ML_2 (use hold to exit)')
 
+def handle_mode_switch_1_release():
+    """Handle GPIO 27 (Mode_Switch_1) button release."""
+    global lr_mode_switch_triggered
+    # Reset the trigger flag when button is released
+    lr_mode_switch_triggered = False
+    log.debug('Mode_Switch_1: Button released, flag reset')
+
 def handle_mode_switch_1_hold(duration):
     """Handle GPIO 27 (Mode_Switch_1) long press (2+ seconds)."""
     global mode_left, lr_mode_switch_triggered
@@ -706,6 +713,13 @@ def handle_mode_switch_2_press():
 
         update_led_status_2()
 
+def handle_mode_switch_2_release():
+    """Handle GPIO 24 (Mode_Switch_2) button release."""
+    global mr_mode_switch_triggered
+    # Reset the trigger flag when button is released
+    mr_mode_switch_triggered = False
+    log.debug('Mode_Switch_2: Button released, flag reset')
+
 def handle_mode_switch_2_hold(duration):
     """Handle GPIO 24 (Mode_Switch_2) long press (2+ seconds)."""
     global mode_right, mode_right_previous, mr_mode_switch_triggered
@@ -777,11 +791,12 @@ class ButtonHandler(Thread):
     # Distinguishes action buttons (repeat hold) from mode-switch buttons (single hold)
     IS_MODE_SWITCH = False
 
-    def __init__(self, button, on_press, on_hold, is_mode_switch=False):
+    def __init__(self, button, on_press, on_hold, is_mode_switch=False, on_release=None):
         super().__init__()
         self.button = button
         self.on_press = on_press
         self.on_hold = on_hold
+        self.on_release = on_release  # Optional release handler
         self.is_mode_switch = is_mode_switch
         self.daemon = True
         self.running = True
@@ -832,6 +847,13 @@ class ButtonHandler(Thread):
                         self.on_press()
                     except Exception as e:
                         log.error('Error in press handler: %s', e)
+
+                # Call release handler if provided
+                if self.on_release:
+                    try:
+                        self.on_release()
+                    except Exception as e:
+                        log.error('Error in release handler: %s', e)
 
             time.sleep(0.01)  # Small sleep to prevent busy-waiting
 
@@ -884,10 +906,10 @@ def setup_button_handlers():
     handlers = [
         ButtonHandler(btn_action_1_1, handle_action_1_1_press, handle_action_1_1_hold, is_mode_switch=False),
         ButtonHandler(btn_action_1_2, handle_action_1_2_press, handle_action_1_2_hold, is_mode_switch=False),
-        ButtonHandler(btn_mode_switch_1, handle_mode_switch_1_press, handle_mode_switch_1_hold, is_mode_switch=True),
+        ButtonHandler(btn_mode_switch_1, handle_mode_switch_1_press, handle_mode_switch_1_hold, is_mode_switch=True, on_release=handle_mode_switch_1_release),
         ButtonHandler(btn_action_2_1, handle_action_2_1_press, handle_action_2_1_hold, is_mode_switch=False),
         ButtonHandler(btn_action_2_2, handle_action_2_2_press, handle_action_2_2_hold, is_mode_switch=False),
-        ButtonHandler(btn_mode_switch_2, handle_mode_switch_2_press, handle_mode_switch_2_hold, is_mode_switch=True),
+        ButtonHandler(btn_mode_switch_2, handle_mode_switch_2_press, handle_mode_switch_2_hold, is_mode_switch=True, on_release=handle_mode_switch_2_release),
     ]
 
     # Start all handler threads
